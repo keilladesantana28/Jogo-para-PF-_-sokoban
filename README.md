@@ -7,7 +7,7 @@ O objetivo é criar um jogo simples utilizando conceitos aprendidos em sala.
 👤 Keilla de Santana Santos
 
 ## Tecnologias usadas
-- Haskell (ou outra linguagem, se for diferente)
+- Java Script e HTML
 - Git e GitHub Codespaces
 
 ## Status do projeto
