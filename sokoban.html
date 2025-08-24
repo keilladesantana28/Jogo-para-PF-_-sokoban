@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sokoban</title>
+</head>
+<body>
+  <canvas width="400" height="400" id="game" style="border: 1px solid black"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const context = canvas.getContext("2d");
+
+    const types = {
+      wall: "#",
+      player: "@",
+      playerOnGoal: "+", 
+      block: "$",
+      blockOnGoal: "*",
+      goal: ".",
+      empty: " "
+    };
+
+    const level1 = `
+    #####
+    #   #
+    #$  #
+  ###  $##
+  #  $ $ #
+### # ## #   ######
+#   # ## #####  ..#
+# $  $          ..#
+##### ### #@##  ..#
+    #     #########
+    #######        
+    `;
+
+    const grid = 32;
+    const cells = [];
+    let playerPos = {row: 0, col: 0};
+    let playerDir = {row: 0, col: 0};
+
+    let linhas = level1.split("\n").filter(l => l.trim().length > 0);
+    let width = 0; 
+
+    linhas.forEach((linha, row) => {
+      cells[row] = [];
+      if (linha.length > width) width = linha.length;
+      linha.split("").forEach((c, col) => {
+        cells[row][col] = c;
+        if (c === types.player || c === types.playerOnGoal) {
+          playerPos = {row, col};
+        }
+      });
+    });
+
+    canvas.width = width * grid; 
+    canvas.height = cells.length * grid;
+
+    function move(startPos, endPos) {
+      const startCell = cells[startPos.row][startPos.col];
+      const endCell = cells[endPos.row][endPos.col];
+
+      const isPlayer = (startCell === types.player || startCell === types.playerOnGoal);
+
+      // limpa posição inicial
+      if (startCell === types.player || startCell === types.block)
+        cells[startPos.row][startPos.col] = types.empty;
+      else
+        cells[startPos.row][startPos.col] = types.goal;
+
+      // coloca na posição final
+      if (endCell === types.empty)
+        cells[endPos.row][endPos.col] = isPlayer ? types.player : types.block;
+      else if (endCell === types.goal)
+        cells[endPos.row][endPos.col] = isPlayer ? types.playerOnGoal : types.blockOnGoal;
+    }
+
+    function draw() {
+      context.clearRect(0,0,canvas.width,canvas.height);
+
+      let allBlocksOnGoal = true;
+
+      for (let row=0; row<cells.length; row++) {
+        for (let col=0; col<cells[row].length; col++) {
+          const cell = cells[row][col];
+
+          if (cell === types.wall) {
+            context.fillStyle = "gray";
+            context.fillRect(col*grid, row*grid, grid, grid);
+          }
+
+          if (cell === types.block || cell === types.blockOnGoal) {
+            context.fillStyle = (cell === types.block) ? "orange" : "green";
+            context.fillRect(col*grid, row*grid, grid, grid);
+            if (cell === types.block) allBlocksOnGoal = false;
+          }
+
+          if (cell === types.goal) {
+            context.strokeStyle = "red";
+            context.beginPath();
+            context.moveTo(col*grid+10, row*grid+10);
+            context.lineTo(col*grid+grid-10, row*grid+grid-10);
+            context.stroke();
+            context.closePath();
+          }
+
+          if (cell === types.player || cell === types.playerOnGoal) {
+            context.fillStyle = "pink";
+            context.beginPath();
+            context.arc((col+0.5)*grid,(row+0.5)*grid,grid/3,0,Math.PI*2);
+            context.fill();
+            context.closePath();
+          }
+        }
+      }
+
+      if (allBlocksOnGoal) {
+        context.fillStyle = "black";
+        context.font = "30px Arial";
+        context.fillText("VOCÊ VENCEU!", 50, 50);
+      }
+    }
+
+    function update() {
+      const row = playerPos.row + playerDir.row;
+      const col = playerPos.col + playerDir.col;
+      const cell = cells[row][col];
+
+      switch(cell) {
+        case types.empty:
+        case types.goal:
+          move(playerPos,{row,col});
+          playerPos = {row,col};
+          break;
+
+        case types.block:
+        case types.blockOnGoal:
+          const nextRow = row + playerDir.row;
+          const nextCol = col + playerDir.col;
+          const nextCell = cells[nextRow][nextCol];
+          if (nextCell === types.empty || nextCell === types.goal) {
+            move({row,col}, {row:nextRow,col:nextCol});
+            move(playerPos,{row,col});
+            playerPos = {row,col};
+          }
+          break;
+      }
+
+      playerDir = {row:0,col:0};
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp") playerDir = {row:-1,col:0};
+      if (e.key === "ArrowDown") playerDir = {row:1,col:0};
+      if (e.key === "ArrowLeft") playerDir = {row:0,col:-1};
+      if (e.key === "ArrowRight") playerDir = {row:0,col:1};
+      update();
+      draw();
+    });
+
+    draw();
+  </script>
+</body>
+  </html>
