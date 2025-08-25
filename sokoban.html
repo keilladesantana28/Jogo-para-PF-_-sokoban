@@ -1,111 +1,167 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sokoban</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #222;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Telas sobrepostas */
+    .tela {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.9);
+      z-index: 10;
+    }
+
+    .tela h1 {
+      font-size: 60px;
+      color: #ff6600;
+      text-shadow: 3px 3px #000;
+    }
+
+    .tela button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 20px;
+      border: none;
+      border-radius: 8px;
+      background: #ff6600;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .tela button:hover {
+      background: #ff4500;
+    }
+
+    #game {
+      border: 2px solid white;
+      background: #111;
+    }
+  </style>
 </head>
 <body>
-  <canvas 
-    width="1400" 
-    height="800" 
-    id="game" 
-    style="border: 1px solid black"
-    ></canvas> /*define tamanho de tela*/
+  
+  <!-- Tela inicial -->
+  <div id="tela-inicial" class="tela">
+    <h1>🎮 Sokoban 🎮</h1>
+    <button onclick="iniciarJogo()">Jogar</button>
+  </div>
+
+  <!-- Tela de vitória -->
+  <div id="tela-vitoria" class="tela" style="display: none;">
+    <h1>🏆 Você Venceu! 🏆</h1>
+    <button onclick="reiniciarJogo()">Reiniciar</button>
+  </div>
+
+  <!-- Área do jogo -->
+  <canvas id="game" width="1400" height="800"></canvas>
 
   <script>
-    const canvas = document.getElementById("game"); //Resgata o elemento canvas pelo id "game"
-    const context = canvas.getContext("2d");// faz ter acesso ao context para possibilitar realizar desenhos no canvas
+    let canvas, context, cells, playerPos, playerDir, grid, types, level1;
 
-    const types = {
-      wall: "#", //paredes
-      player: "@",//jogador
-      playerOnGoal: "+", //jogador quando na posição onde deveriam estar as caixas
-      block: "$", //caixas
-      blockOnGoal: "*", //caixas na posição correta
-      goal: ".",// local para posicionar as caixas
-      empty: " " // chão que pode ser percorrido(geralmente limitados por paredes)
-    }; //define elementos  que serão inseridos no canvas 
+    function iniciarJogo() {
+      document.getElementById("tela-inicial").style.display = "none";
+      document.getElementById("tela-vitoria").style.display = "none";
+      startSokoban();
+    }
 
-    const level1 = `
-    #####
-    #   #
-    #$  #
-  ###  $##
-  #  $ $ #
-### # ## #   ######
-#   # ## #####  ..#
-# $  $          ..#
-##### ### #@##  ..#
-    #     #########
-    #######        
-    `;
-/*define desenho dos níveis:
-sugestão nível 1
-########
-#      #
-#@ $   #
-#   $  #
-# . .  #
-########
-nivel 2
-########
-#     .#
-#@ $   #
-#   $  #
-# . *  #
-########
-nivel 3
+    function reiniciarJogo() {
+      iniciarJogo(); // reaproveita a função
+    }
 
-########
-#      #
-#  $   #
-#   $  #
-# + .  #
-########
-o primeiro ser nivel 4 ja esta no jogo 
-#####
-###@ .#
-# $ #.#
-#  $$ #
-#.  # #
-#   $.#
-#######*/
-    const grid = 32;
-    const cells = []; // cria matriz com cada linha definida em const como uma celula dentro da matriz
-    let playerPos = {row: 0, col: 0}; // define posição do jogador dentro da matriz row-> linha col-> coluna da matriz
-    let playerDir = {row: 0, col: 0};
+    function startSokoban() {
+      canvas = document.getElementById("game");
+      context = canvas.getContext("2d");
 
-    let linhas = level1.split("\n").filter(l => l.trim().length > 0); /*cria um array de strings para cada linha definida por level1 e remove a priemeira lina vazia e a fase começa na linha 0*/
-    let width = 0; //armazena a largura total do mapa
+      types = {
+        wall: "#",
+        player: "@",
+        playerOnGoal: "+",
+        block: "$",
+        blockOnGoal: "*",
+        goal: ".",
+        empty: " "
+      };
 
-    linhas.forEach((linha, row) => { // percorre as linhas e row é o indice
-      cells[row] = []; //representa as colunas
-      if (linha.length > width) width = linha.length;// verifica tamanho das linhas para saber o tamanho do mapa em colunas
-      linha.split("").forEach((caractere, col) => { // transforma cada linha em um array de caractere(um para cada célula) 
-        cells[row][col] = caractere;
-        if (c === types.player || c === types.playerOnGoal) {
-          playerPos = {row, col};
-        }
+      level1 = `
+      #####
+      #   #
+      #$  #
+    ###  $##
+    #  $ $ #
+  ### # ## #   ######
+  #   # ## #####  ..#
+  # $  $          ..#
+  ##### ### #@##  ..#
+      #     #########
+      #######        
+      `;
+
+      grid = 32;
+      cells = [];
+      playerPos = {row: 0, col: 0};
+      playerDir = {row: 0, col: 0};
+
+      let linhas = level1.split("\n").filter(l => l.trim().length > 0);
+      let width = 0;
+
+      linhas.forEach((linha, row) => {
+        cells[row] = [];
+        if (linha.length > width) width = linha.length;
+        linha.split("").forEach((c, col) => {
+          cells[row][col] = c;
+          if (c === types.player || c === types.playerOnGoal) {
+            playerPos = {row, col};
+          }
+        });
       });
-    });
 
-    canvas.width = width * grid; 
-    canvas.height = cells.length * grid;
+      canvas.width = width * grid; 
+      canvas.height = cells.length * grid;
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowUp") playerDir = {row:-1,col:0};
+        if (e.key === "ArrowDown") playerDir = {row:1,col:0};
+        if (e.key === "ArrowLeft") playerDir = {row:0,col:-1};
+        if (e.key === "ArrowRight") playerDir = {row:0,col:1};
+        update();
+        draw();
+      });
+
+      draw();
+    }
 
     function move(startPos, endPos) {
       const startCell = cells[startPos.row][startPos.col];
       const endCell = cells[endPos.row][endPos.col];
-
       const isPlayer = (startCell === types.player || startCell === types.playerOnGoal);
 
-      // limpa posição inicial
       if (startCell === types.player || startCell === types.block)
         cells[startPos.row][startPos.col] = types.empty;
       else
         cells[startPos.row][startPos.col] = types.goal;
 
-      // coloca na posição final
       if (endCell === types.empty)
         cells[endPos.row][endPos.col] = isPlayer ? types.player : types.block;
       else if (endCell === types.goal)
@@ -114,7 +170,6 @@ o primeiro ser nivel 4 ja esta no jogo
 
     function draw() {
       context.clearRect(0,0,canvas.width,canvas.height);
-
       let allBlocksOnGoal = true;
 
       for (let row=0; row<cells.length; row++) {
@@ -152,9 +207,7 @@ o primeiro ser nivel 4 ja esta no jogo
       }
 
       if (allBlocksOnGoal) {
-        context.fillStyle = "black";
-        context.font = "30px Arial";
-        context.fillText("VOCÊ VENCEU!", 50, 50);
+        document.getElementById("tela-vitoria").style.display = "flex";
       }
     }
 
@@ -185,17 +238,6 @@ o primeiro ser nivel 4 ja esta no jogo
 
       playerDir = {row:0,col:0};
     }
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowUp") playerDir = {row:-1,col:0};
-      if (e.key === "ArrowDown") playerDir = {row:1,col:0};
-      if (e.key === "ArrowLeft") playerDir = {row:0,col:-1};
-      if (e.key === "ArrowRight") playerDir = {row:0,col:1};
-      update();
-      draw();
-    });
-
-    draw();
   </script>
 </body>
-  </html>
+</html>
