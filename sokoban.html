@@ -6,21 +6,26 @@
   <title>Sokoban</title>
 </head>
 <body>
-  <canvas width="400" height="400" id="game" style="border: 1px solid black"></canvas>
+  <canvas 
+    width="1400" 
+    height="800" 
+    id="game" 
+    style="border: 1px solid black"
+    ></canvas> /*define tamanho de tela*/
 
   <script>
-    const canvas = document.getElementById("game");
-    const context = canvas.getContext("2d");
+    const canvas = document.getElementById("game"); //Resgata o elemento canvas pelo id "game"
+    const context = canvas.getContext("2d");// faz ter acesso ao context para possibilitar realizar desenhos no canvas
 
     const types = {
-      wall: "#",
-      player: "@",
-      playerOnGoal: "+", 
-      block: "$",
-      blockOnGoal: "*",
-      goal: ".",
-      empty: " "
-    };
+      wall: "#", //paredes
+      player: "@",//jogador
+      playerOnGoal: "+", //jogador quando na posição onde deveriam estar as caixas
+      block: "$", //caixas
+      blockOnGoal: "*", //caixas na posição correta
+      goal: ".",// local para posicionar as caixas
+      empty: " " // chão que pode ser percorrido(geralmente limitados por paredes)
+    }; //define elementos  que serão inseridos no canvas 
 
     const level1 = `
     #####
@@ -35,20 +40,50 @@
     #     #########
     #######        
     `;
+/*define desenho dos níveis:
+sugestão nível 1
+########
+#      #
+#@ $   #
+#   $  #
+# . .  #
+########
+nivel 2
+########
+#     .#
+#@ $   #
+#   $  #
+# . *  #
+########
+nivel 3
 
+########
+#      #
+#  $   #
+#   $  #
+# + .  #
+########
+o primeiro ser nivel 4 ja esta no jogo 
+#####
+###@ .#
+# $ #.#
+#  $$ #
+#.  # #
+#   $.#
+#######*/
     const grid = 32;
-    const cells = [];
-    let playerPos = {row: 0, col: 0};
+    const cells = []; // cria matriz com cada linha definida em const como uma celula dentro da matriz
+    let playerPos = {row: 0, col: 0}; // define posição do jogador dentro da matriz row-> linha col-> coluna da matriz
     let playerDir = {row: 0, col: 0};
 
-    let linhas = level1.split("\n").filter(l => l.trim().length > 0);
-    let width = 0; 
+    let linhas = level1.split("\n").filter(l => l.trim().length > 0); /*cria um array de strings para cada linha definida por level1 e remove a priemeira lina vazia e a fase começa na linha 0*/
+    let width = 0; //armazena a largura total do mapa
 
-    linhas.forEach((linha, row) => {
-      cells[row] = [];
-      if (linha.length > width) width = linha.length;
-      linha.split("").forEach((c, col) => {
-        cells[row][col] = c;
+    linhas.forEach((linha, row) => { // percorre as linhas e row é o indice
+      cells[row] = []; //representa as colunas
+      if (linha.length > width) width = linha.length;// verifica tamanho das linhas para saber o tamanho do mapa em colunas
+      linha.split("").forEach((caractere, col) => { // transforma cada linha em um array de caractere(um para cada célula) 
+        cells[row][col] = caractere;
         if (c === types.player || c === types.playerOnGoal) {
           playerPos = {row, col};
         }
