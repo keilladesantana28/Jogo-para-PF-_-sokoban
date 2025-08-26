@@ -89,14 +89,16 @@
     function reiniciarJogo() {
       iniciarJogo(); // reaproveita a função
     }
-
-    function startSokoban() {
-      canvas = document.getElementById("game");
-      context = canvas.getContext("2d");
-
+    
+   <script>
+    document.addEventListener("DOMContentLoaded", () => {
+    const canvas = document.getElementById("game");
+    const context = canvas.getContext("2d");
+    const grid = 32;
+    
       types = {
         wall: "#",
-        player: "@",
+        player: "@",<script
         playerOnGoal: "+",
         block: "$",
         blockOnGoal: "*",
@@ -123,121 +125,172 @@
       playerPos = {row: 0, col: 0};
       playerDir = {row: 0, col: 0};
 
-      let linhas = level1.split("\n").filter(l => l.trim().length > 0);
-      let width = 0;
+     
+    // 1. Carrega o nível 
+    const loadLevel = (level) => {
+        const linhas = level.split("\n").filter(l => l.trim().length > 0);
+        let playerPos = {row: 0, col: 0};
 
-      linhas.forEach((linha, row) => {
-        cells[row] = [];
-        if (linha.length > width) width = linha.length;
-        linha.split("").forEach((c, col) => {
-          cells[row][col] = c;
-          if (c === types.player || c === types.playerOnGoal) {
-            playerPos = {row, col};
-          }
+        const board = linhas.map((linha, row) => {
+            return linha.split("").map((c, col) => {
+                if (c === types.player || c === types.playerOnGoal) {
+                    playerPos = {row, col};
+                }
+                return c;
+            });
         });
-      });
 
-      canvas.width = width * grid; 
-      canvas.height = cells.length * grid;
+      const width = Math.max(...linhas.map(l => l.length));
+        canvas.width = width * grid;
+        canvas.height = linhas.length * grid;
 
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowUp") playerDir = {row:-1,col:0};
-        if (e.key === "ArrowDown") playerDir = {row:1,col:0};
-        if (e.key === "ArrowLeft") playerDir = {row:0,col:-1};
-        if (e.key === "ArrowRight") playerDir = {row:0,col:1};
-        update();
-        draw();
-      });
+        return { board, playerPos };
+    };
+    
+     
+    let gameState = loadLevel(level1);
+
+    //  Funções de Movimento 
+    const canMove = (board, pos) => {
+        const cell = board[pos.row]?.[pos.col] || types.wall;
+        return cell !== types.wall && (cell === types.empty || cell === types.goal);
+    };
 
       draw();
     }
 
-    function move(startPos, endPos) {
-      const startCell = cells[startPos.row][startPos.col];
-      const endCell = cells[endPos.row][endPos.col];
-      const isPlayer = (startCell === types.player || startCell === types.playerOnGoal);
+    const moveEntity = (board, fromPos, toPos, isPlayer) => {
+        const newBoard = board.map(row => [...row]); // Cria uma cópia imutável
+        const fromCell = newBoard[fromPos.row][fromPos.col];
+        const toCell = newBoard[toPos.row][toPos.col];
 
-      if (startCell === types.player || startCell === types.block)
-        cells[startPos.row][startPos.col] = types.empty;
-      else
-        cells[startPos.row][startPos.col] = types.goal;
-
-      if (endCell === types.empty)
-        cells[endPos.row][endPos.col] = isPlayer ? types.player : types.block;
-      else if (endCell === types.goal)
-        cells[endPos.row][endPos.col] = isPlayer ? types.playerOnGoal : types.blockOnGoal;
-    }
-
-    function draw() {
-      context.clearRect(0,0,canvas.width,canvas.height);
-      let allBlocksOnGoal = true;
-
-      for (let row=0; row<cells.length; row++) {
-        for (let col=0; col<cells[row].length; col++) {
-          const cell = cells[row][col];
-
-          if (cell === types.wall) {
-            context.fillStyle = "gray";
-            context.fillRect(col*grid, row*grid, grid, grid);
-          }
-
-          if (cell === types.block || cell === types.blockOnGoal) {
-            context.fillStyle = (cell === types.block) ? "orange" : "green";
-            context.fillRect(col*grid, row*grid, grid, grid);
-            if (cell === types.block) allBlocksOnGoal = false;
-          }
-
-          if (cell === types.goal) {
-            context.strokeStyle = "red";
-            context.beginPath();
-            context.moveTo(col*grid+10, row*grid+10);
-            context.lineTo(col*grid+grid-10, row*grid+grid-10);
-            context.stroke();
-            context.closePath();
-          }
-
-          if (cell === types.player || cell === types.playerOnGoal) {
-            context.fillStyle = "pink";
-            context.beginPath();
-            context.arc((col+0.5)*grid,(row+0.5)*grid,grid/3,0,Math.PI*2);
-            context.fill();
-            context.closePath();
-          }
+     // Limpa a posição original
+        if (fromCell === types.player || fromCell === types.block) {
+            newBoard[fromPos.row][fromPos.col] = types.empty;
+     
+    } else {
+            newBoard[fromPos.row][fromPos.col] = types.goal;
         }
-      }
+      
+     // Define o novo elemento
+        if (isPlayer) {
+            newBoard[toPos.row][toPos.col] = (toCell === types.goal) ? types.playerOnGoal : types.player;
+       
+     } else {
+            newBoard[toPos.row][toPos.col] = (toCell === types.goal) ? types.blockOnGoal : types.block;
+        }
+    
+  return newBoard;
+    };
+    
+     //  Função de atualização do estado 
+    const update = (state, playerDir) => {
+        const nextPlayerPos = {
+            row: state.playerPos.row + playerDir.row,
+            col: state.playerPos.col + playerDir.col
+        };
 
-      if (allBlocksOnGoal) {
-        document.getElementById("tela-vitoria").style.display = "flex";
-      }
-    }
+        const nextCell = state.board[nextPlayerPos.row]?.[nextPlayerPos.col] || types.wall;
+        
+        // Cópia inicial para as alterações
+        let newBoard = state.board;
+        let newPlayerPos = state.playerPos;
 
-    function update() {
-      const row = playerPos.row + playerDir.row;
-      const col = playerPos.col + playerDir.col;
-      const cell = cells[row][col];
+          if (canMove(state.board, nextPlayerPos)) {
+            newBoard = moveEntity(newBoard, newPlayerPos, nextPlayerPos, true);
+            newPlayerPos = nextPlayerPos;
+        } else if (canPushBlock(state.board, nextPlayerPos)) {
+            const nextBlockPos = {
+                row: nextPlayerPos.row + playerDir.row,
+                col: nextPlayerPos.col + playerDir.col
+            };
+            
+           if (canMove(state.board, nextBlockPos)) {
+                newBoard = moveEntity(newBoard, nextPlayerPos, nextBlockPos, false);
+                newBoard = moveEntity(newBoard, newPlayerPos, nextPlayerPos, true);
+                newPlayerPos = nextPlayerPos;
+            }
+        }
+        
+        return { board: newBoard, playerPos: newPlayerPos };
+    };
 
-      switch(cell) {
-        case types.empty:
-        case types.goal:
-          move(playerPos,{row,col});
-          playerPos = {row,col};
-          break;
+     // Funções do controle e renderização
+    const draw = (state) => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        let allBlocksOnGoal = true;
+      
+     state.board.forEach((row, rowIndex) => {
+            row.forEach((cell, colIndex) => {
+                context.fillStyle = "grey";
+                if (cell === types.wall) context.fillStyle = "#ff6600";
+                if (cell === types.empty) context.fillStyle = "#444";
+                if (cell === types.goal) context.fillStyle = "blue";
 
-        case types.block:
-        case types.blockOnGoal:
-          const nextRow = row + playerDir.row;
-          const nextCol = col + playerDir.col;
-          const nextCell = cells[nextRow][nextCol];
-          if (nextCell === types.empty || nextCell === types.goal) {
-            move({row,col}, {row:nextRow,col:nextCol});
-            move(playerPos,{row,col});
-            playerPos = {row,col};
-          }
-          break;
-      }
+              context.fillRect(colIndex * grid, rowIndex * grid, grid, grid);
+    
+                context.fillStyle = "white";
+                if (cell === types.player || cell === types.playerOnGoal) context.fillStyle = "yellow";
+                if (cell === types.block || cell === types.blockOnGoal) {
+                    context.fillStyle = "brown";
+                    context.fillRect(colIndex * grid + 2, rowIndex * grid + 2, grid - 4, grid - 4);
+                }
+              
+     if (cell === types.block) allBlocksOnGoal = false; // Corrigido para verificar se ainda existem blocos fora do lugar
+            });
+        });
 
-      playerDir = {row:0,col:0};
-    }
+        // Verifica a condição de vitória
+        if (allBlocksOnGoal) {
+            document.getElementById("tela-vitoria").style.display = "flex";
+        }
+    };
+
+     const handleInput = (e) => {
+        const playerDir = {row: 0, col: 0};
+        if (e.key === "ArrowUp") playerDir.row = -1;
+        if (e.key === "ArrowDown") playerDir.row = 1;
+        if (e.key === "ArrowLeft") playerDir.col = -1;
+        if (e.key === "ArrowRight") playerDir.col = 1;
+    
+        if (playerDir.row !== 0 || playerDir.col !== 0) {
+            //  função de atualização, que retorna o novo estado
+            gameState = update(gameState, playerDir);
+            draw(gameState);
+        }
+    };
+
+
+        const iniciarJogo = () => {
+        document.getElementById("tela-inicial").style.display = "none";
+        document.getElementById("tela-vitoria").style.display = "none";
+        gameState = loadLevel(level1);
+        draw(gameState);
+    };
+
+    const reiniciarJogo = () => iniciarJogo();
+
+    document.addEventListener("keydown", handleInput);
+    window.iniciarJogo = iniciarJogo;
+    window.reiniciarJogo = reiniciarJogo;
+
+    draw(gameState);
+    }); const iniciarJogo = () => {
+        document.getElementById("tela-inicial").style.display = "none";
+        document.getElementById("tela-vitoria").style.display = "none";
+        gameState = loadLevel(level1);
+        draw(gameState);
+    };
+
+    const reiniciarJogo = () => iniciarJogo();
+
+    document.addEventListener("keydown", handleInput);
+    window.iniciarJogo = iniciarJogo;
+    window.reiniciarJogo = reiniciarJogo;
+
+    draw(gameState);
+    });
+    
   </script>
 </body>
 </html>
