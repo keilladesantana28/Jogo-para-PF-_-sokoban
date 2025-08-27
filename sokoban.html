@@ -1,101 +1,95 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sokoban</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #222;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      overflow: hidden;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sokoban</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #000000;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-    /* Telas sobrepostas */
-    .tela {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background: rgba(0,0,0,0.9);
-      z-index: 10;
-    }
+        .tela {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.9);
+            z-index: 10;
+        }
 
-    .tela h1 {
-      font-size: 60px;
-      color: #ff6600;
-      text-shadow: 3px 3px #000;
-    }
+        .tela h1 {
+            font-size: 60px;
+            color: #ff6600;
+            text-shadow: 3px 3px #000;
+        }
 
-    .tela button {
-      margin-top: 20px;
-      padding: 12px 24px;
-      font-size: 20px;
-      border: none;
-      border-radius: 8px;
-      background: #ff6600;
-      color: white;
-      cursor: pointer;
-      transition: 0.3s;
-    }
+        .tela button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            font-size: 20px;
+            border: none;
+            border-radius: 8px;
+            background: #1f1094;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
 
-    .tela button:hover {
-      background: #ff4500;
-    }
+        .tela button:hover {
+            background: #2200ff;
+        }
 
-    #game {
-      border: 2px solid white;
-      background: #111;
-    }
-  </style>
+        #game {
+            border: 2px solid rgb(0, 0, 0);
+            background: #000000;
+        }
+    </style>
 </head>
 <body>
-  
-  <!-- Tela inicial -->
-  <div id="tela-inicial" class="tela">
-    <h1>🎮 Sokoban 🎮</h1>
-    <button onclick="iniciarJogo()">Jogar</button>
-  </div>
+    <div id="tela-inicial" class="tela">
+        <h1>🎮 Sokoban 🎮</h1>
+        <button onclick="iniciarJogo()">Jogar</button>
+    </div>
 
-  <!-- Tela de vitória -->
-  <div id="tela-vitoria" class="tela" style="display: none;">
-    <h1>🏆 Você Venceu! 🏆</h1>
-    <button onclick="reiniciarJogo()">Reiniciar</button>
-  </div>
+    <div id="tela-vitoria" class="tela" style="display: none;">
+        <h1>🏆 Você Venceu! 🏆</h1>
+        <button onclick="reiniciarJogo()">Reiniciar</button>
+    </div>
 
-  <!-- Área do jogo -->
-  <canvas id="game" width="1400" height="800"></canvas>
+    <canvas id="game" width="1400" height="800"></canvas>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const canvas = document.getElementById("game");
+            const context = canvas.getContext("2d");
+            const grid = 32;
+            let gameState;
 
-    
-   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-    const canvas = document.getElementById("game");
-    const context = canvas.getContext("2d");
-    const grid = 32;
-    
-      types = {
-        wall: "#",
-        player: "@",<script
-        playerOnGoal: "+",
-        block: "$",
-        blockOnGoal: "*",
-        goal: ".",
-        empty: " "
-      };
+            const types = {
+                wall: "#",
+                player: "@",
+                playerOnGoal: "+",
+                block: "$",
+                blockOnGoal: "*",
+                goal: ".",
+                empty: " "
+            };
 
-      level1 = `
+            const level1 = `    
       #####
       #   #
       #$  #
@@ -109,177 +103,167 @@
       #######        
       `;
 
-      grid = 32;
-      cells = [];
-      playerPos = {row: 0, col: 0};
-      playerDir = {row: 0, col: 0};
+            const loadLevel = (level) => {
+                const linhas = level.split("\n").filter(l => l.trim().length > 0);
+                let playerPos = { row: 0, col: 0 };
+                let goals = [];
 
-     
-    // 1. Carrega o nível 
-    const loadLevel = (level) => {
-        const linhas = level.split("\n").filter(l => l.trim().length > 0);
-        let playerPos = {row: 0, col: 0};
+                const board = linhas.map((linha, row) => {
+                    return linha.split("").map((c, col) => {
+                        if (c === types.player || c === types.playerOnGoal) {
+                            playerPos = { row, col };
+                        }
+                        if (c === types.goal || c === types.playerOnGoal || c === types.blockOnGoal) {
+                            goals.push({ row, col });
+                        }
+                        return c;
+                    });
+                });
 
-        const board = linhas.map((linha, row) => {
-            return linha.split("").map((c, col) => {
-                if (c === types.player || c === types.playerOnGoal) {
-                    playerPos = {row, col};
+                const width = Math.max(...linhas.map(l => l.length));
+                canvas.width = width * grid;
+                canvas.height = linhas.length * grid;
+
+                return { board, playerPos, goals };
+            };
+
+            const isGoal = (board, pos) => {
+                const originalCell = board[pos.row]?.[pos.col];
+                return originalCell === types.goal || originalCell === types.playerOnGoal || originalCell === types.blockOnGoal;
+            };
+
+            const canMove = (board, pos) => {
+                const cell = board[pos.row]?.[pos.col] || types.wall;
+                return cell === types.empty || cell === types.goal;
+            };
+
+            const canPushBlock = (board, pos) => {
+                const cell = board[pos.row]?.[pos.col] || types.wall;
+                return cell === types.block || cell === types.blockOnGoal;
+            };
+
+            const moveEntity = (board, fromPos, toPos, isPlayer) => {
+                const newBoard = board.map(row => [...row]);
+                
+                // Determina o que "deixar" na posição original
+                newBoard[fromPos.row][fromPos.col] = isGoal(board, fromPos) ? types.goal : types.empty;
+                
+                // Determina o que "colocar" na nova posição
+                const nextCellIsGoal = isGoal(board, toPos);
+                if (isPlayer) {
+                    newBoard[toPos.row][toPos.col] = nextCellIsGoal ? types.playerOnGoal : types.player;
+                } else {
+                    newBoard[toPos.row][toPos.col] = nextCellIsGoal ? types.blockOnGoal : types.block;
                 }
-                return c;
-            });
-        });
 
-      const width = Math.max(...linhas.map(l => l.length));
-        canvas.width = width * grid;
-        canvas.height = linhas.length * grid;
+                return newBoard;
+            };
 
-        return { board, playerPos };
-    };
-    
-     
-    let gameState = loadLevel(level1);
+            const update = (state, playerDir) => {
+                const nextPlayerPos = {
+                    row: state.playerPos.row + playerDir.row,
+                    col: state.playerPos.col + playerDir.col
+                };
+                
+                let newBoard = state.board;
+                let newPlayerPos = state.playerPos;
 
-    //  Funções de Movimento 
-    const canMove = (board, pos) => {
-        const cell = board[pos.row]?.[pos.col] || types.wall;
-        return cell !== types.wall && (cell === types.empty || cell === types.goal);
-    };
-
-      draw();
-    }
-
-    const moveEntity = (board, fromPos, toPos, isPlayer) => {
-        const newBoard = board.map(row => [...row]); // Cria uma cópia imutável
-        const fromCell = newBoard[fromPos.row][fromPos.col];
-        const toCell = newBoard[toPos.row][toPos.col];
-
-     // Limpa a posição original
-        if (fromCell === types.player || fromCell === types.block) {
-            newBoard[fromPos.row][fromPos.col] = types.empty;
-     
-    } else {
-            newBoard[fromPos.row][fromPos.col] = types.goal;
-        }
-      
-     // Define o novo elemento
-        if (isPlayer) {
-            newBoard[toPos.row][toPos.col] = (toCell === types.goal) ? types.playerOnGoal : types.player;
-       
-     } else {
-            newBoard[toPos.row][toPos.col] = (toCell === types.goal) ? types.blockOnGoal : types.block;
-        }
-    
-  return newBoard;
-    };
-    
-     //  Função de atualização do estado 
-    const update = (state, playerDir) => {
-        const nextPlayerPos = {
-            row: state.playerPos.row + playerDir.row,
-            col: state.playerPos.col + playerDir.col
-        };
-
-        const nextCell = state.board[nextPlayerPos.row]?.[nextPlayerPos.col] || types.wall;
-        
-        // Cópia inicial para as alterações
-        let newBoard = state.board;
-        let newPlayerPos = state.playerPos;
-
-          if (canMove(state.board, nextPlayerPos)) {
-            newBoard = moveEntity(newBoard, newPlayerPos, nextPlayerPos, true);
-            newPlayerPos = nextPlayerPos;
-        } else if (canPushBlock(state.board, nextPlayerPos)) {
-            const nextBlockPos = {
-                row: nextPlayerPos.row + playerDir.row,
-                col: nextPlayerPos.col + playerDir.col
+                if (canMove(state.board, nextPlayerPos)) {
+                    newBoard = moveEntity(newBoard, newPlayerPos, nextPlayerPos, true);
+                    newPlayerPos = nextPlayerPos;
+                } else if (canPushBlock(state.board, nextPlayerPos)) {
+                    const nextBlockPos = {
+                        row: nextPlayerPos.row + playerDir.row,
+                        col: nextPlayerPos.col + playerDir.col
+                    };
+                    
+                    if (canMove(state.board, nextBlockPos)) {
+                        newBoard = moveEntity(newBoard, nextPlayerPos, nextBlockPos, false);
+                        newBoard = moveEntity(newBoard, newPlayerPos, nextPlayerPos, true);
+                        newPlayerPos = nextPlayerPos;
+                    }
+                }
+                
+                return { ...state, board: newBoard, playerPos: newPlayerPos };
             };
             
-           if (canMove(state.board, nextBlockPos)) {
-                newBoard = moveEntity(newBoard, nextPlayerPos, nextBlockPos, false);
-                newBoard = moveEntity(newBoard, newPlayerPos, nextPlayerPos, true);
-                newPlayerPos = nextPlayerPos;
-            }
-        }
-        
-        return { board: newBoard, playerPos: newPlayerPos };
-    };
+            const checkWin = (state) => {
+                const totalGoals = state.goals.length;
+                let blocksOnGoals = 0;
+                
+                state.goals.forEach(goalPos => {
+                    const cell = state.board[goalPos.row]?.[goalPos.col];
+                    if (cell === types.blockOnGoal ){
+                        blocksOnGoals++;
+                    }
+                });
 
-     // Funções do controle e renderização
-    const draw = (state) => {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        let allBlocksOnGoal = true;
-      
-     state.board.forEach((row, rowIndex) => {
-            row.forEach((cell, colIndex) => {
-                context.fillStyle = "grey";
-                if (cell === types.wall) context.fillStyle = "#ff6600";
-                if (cell === types.empty) context.fillStyle = "#444";
-                if (cell === types.goal) context.fillStyle = "blue";
+                return totalGoals > 0 && totalGoals === blocksOnGoals;
+            };
 
-              context.fillRect(colIndex * grid, rowIndex * grid, grid, grid);
-    
-                context.fillStyle = "white";
-                if (cell === types.player || cell === types.playerOnGoal) context.fillStyle = "yellow";
-                if (cell === types.block || cell === types.blockOnGoal) {
-                    context.fillStyle = "brown";
-                    context.fillRect(colIndex * grid + 2, rowIndex * grid + 2, grid - 4, grid - 4);
+            const draw = (state) => {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                
+                state.board.forEach((row, rowIndex) => {
+                    row.forEach((cell, colIndex) => {
+                        // Desenha o chão e paredes
+                        context.fillStyle = "grey";
+                        if (cell === types.wall) context.fillStyle = "#ff6600";
+                        if (cell === types.empty) context.fillStyle = "#444";
+                        
+                        // O objetivo é desenhado no fundo, antes do jogador ou bloco
+                        if (cell === types.goal || cell === types.playerOnGoal || cell === types.blockOnGoal) {
+                             context.fillStyle = "blue";
+                        }
+                        context.fillRect(colIndex * grid, rowIndex * grid, grid, grid);
+                        
+                        // Desenha o jogador e os blocos por cima
+                        if (cell === types.player || cell === types.playerOnGoal) {
+                            context.fillStyle = "yellow";
+                            context.fillRect(colIndex * grid + 4, rowIndex * grid + 4, grid - 8, grid - 8);
+                        } else if (cell === types.block || cell === types.blockOnGoal) {
+                            context.fillStyle = "brown";
+                            context.fillRect(colIndex * grid + 2, rowIndex * grid + 2, grid - 4, grid - 4);
+                        }
+                    });
+                });
+                
+                if (checkWin(state)) {
+                    document.getElementById("tela-vitoria").style.display = "flex";
                 }
-              
-     if (cell === types.block) allBlocksOnGoal = false; // Corrigido para verificar se ainda existem blocos fora do lugar
-            });
+            };
+            
+            const handleInput = (e) => {
+                const playerDir = { row: 0, col: 0 };
+                if (e.key === "ArrowUp") playerDir.row = -1;
+                if (e.key === "ArrowDown") playerDir.row = 1;
+                if (e.key === "ArrowLeft") playerDir.col = -1;
+                if (e.key === "ArrowRight") playerDir.col = 1;
+
+                if (playerDir.row !== 0 || playerDir.col !== 0) {
+                    gameState = update(gameState, playerDir);
+                    draw(gameState);
+                }
+            };
+
+            const iniciarJogo = () => {
+                document.getElementById("tela-inicial").style.display = "none";
+                document.getElementById("tela-vitoria").style.display = "none";
+                gameState = loadLevel(level1);
+                draw(gameState);
+            };
+
+            const reiniciarJogo = () => iniciarJogo();
+
+            document.addEventListener("keydown", handleInput);
+            window.iniciarJogo = iniciarJogo;
+            window.reiniciarJogo = reiniciarJogo;
+
+            // Inicia o jogo na tela inicial, mas desenha o tabuleiro para que ele apareça atrás.
+            draw(loadLevel(level1));
         });
-
-        // Verifica a condição de vitória
-        if (allBlocksOnGoal) {
-            document.getElementById("tela-vitoria").style.display = "flex";
-        }
-    };
-
-     const handleInput = (e) => {
-        const playerDir = {row: 0, col: 0};
-        if (e.key === "ArrowUp") playerDir.row = -1;
-        if (e.key === "ArrowDown") playerDir.row = 1;
-        if (e.key === "ArrowLeft") playerDir.col = -1;
-        if (e.key === "ArrowRight") playerDir.col = 1;
-    
-        if (playerDir.row !== 0 || playerDir.col !== 0) {
-            //  função de atualização, que retorna o novo estado
-            gameState = update(gameState, playerDir);
-            draw(gameState);
-        }
-    };
-
-
-        const iniciarJogo = () => {
-        document.getElementById("tela-inicial").style.display = "none";
-        document.getElementById("tela-vitoria").style.display = "none";
-        gameState = loadLevel(level1);
-        draw(gameState);
-    };
-
-    const reiniciarJogo = () => iniciarJogo();
-
-    document.addEventListener("keydown", handleInput);
-    window.iniciarJogo = iniciarJogo;
-    window.reiniciarJogo = reiniciarJogo;
-
-    draw(gameState);
-    }); const iniciarJogo = () => {
-        document.getElementById("tela-inicial").style.display = "none";
-        document.getElementById("tela-vitoria").style.display = "none";
-        gameState = loadLevel(level1);
-        draw(gameState);
-    };
-
-    const reiniciarJogo = () => iniciarJogo();
-
-    document.addEventListener("keydown", handleInput);
-    window.iniciarJogo = iniciarJogo;
-    window.reiniciarJogo = reiniciarJogo;
-
-    draw(gameState);
-    });
-    
-  </script>
+    </script>
 </body>
 </html>
+
+  
