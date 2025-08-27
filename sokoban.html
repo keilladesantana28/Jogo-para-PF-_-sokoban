@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sokoban</title>
     <style>
+        /* o css embutido define aparencia do mapa e de cada elemento do jogo */
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -17,6 +18,7 @@
             overflow: hidden;
         }
 
+        /* telas sobrepostas */
         .tela {
             position: absolute;
             top: 0;
@@ -31,12 +33,14 @@
             z-index: 10;
         }
 
+         /* define o estilo e a aparencia principal do menu */
         .tela h1 {
             font-size: 60px;
             color: #ff6600;
             text-shadow: 3px 3px #000;
         }
 
+        /* define o estilo para os botoes na tela do menu */
         .tela button {
             margin-top: 20px;
             padding: 12px 24px;
@@ -48,11 +52,13 @@
             cursor: pointer;
             transition: 0.3s;
         }
-
+        
+        /* Efeito visual ao passar o mouse sobre os botões. */
         .tela button:hover {
             background: #2200ff;
         }
-
+        
+        /* Define o estilo da tela do jogo. */
         #game {
             border: 2px solid rgb(0, 0, 0);
             background: #000000;
@@ -60,25 +66,33 @@
     </style>
 </head>
 <body>
+
+    <!-- Tela inicial -->
     <div id="tela-inicial" class="tela">
         <h1>🎮 Sokoban 🎮</h1>
         <button onclick="iniciarJogo()">Jogar</button>
     </div>
-
+    
+    <!-- Tela de vitória -->
     <div id="tela-vitoria" class="tela" style="display: none;">
         <h1>🏆 Você Venceu! 🏆</h1>
         <button onclick="reiniciarJogo()">Reiniciar</button>
     </div>
 
+    <!-- Área do jogo -->
     <canvas id="game" width="1400" height="800"></canvas>
 
     <script>
+       /* O código JavaScript é utilizado neste escopo para garantir que ele só
+         seja executado depois que todo o HTML da página for carregado */
         document.addEventListener("DOMContentLoaded", () => {
+            // Referências aos elementos do canvas e o contexto 2D para desenhar.
             const canvas = document.getElementById("game");
             const context = canvas.getContext("2d");
-            const grid = 32;
-            let gameState;
+            const grid = 32; // Tamanho de cada célula (quadrado) do jogo.
+            let gameState;   // Variável para armazenar o estado atual do jogo.
 
+            /* mapeia cada caractere do mapa a um tipo de elemento do jogo */       
             const types = {
                 wall: "#",
                 player: "@",
@@ -88,7 +102,8 @@
                 goal: ".",
                 empty: " "
             };
-
+     
+            /* o mapa do jogo representada por uma string */
             const level1 = `    
       #####
       #   #
@@ -103,6 +118,7 @@
       #######        
       `;
 
+            /*converte a string do mapa em uma matriz 2D */
             const loadLevel = (level) => {
                 const linhas = level.split("\n").filter(l => l.trim().length > 0);
                 let playerPos = { row: 0, col: 0 };
@@ -127,6 +143,7 @@
                 return { board, playerPos, goals };
             };
 
+            /* funçoes para verificar as regras do movimento */
             const isGoal = (board, pos) => {
                 const originalCell = board[pos.row]?.[pos.col];
                 return originalCell === types.goal || originalCell === types.playerOnGoal || originalCell === types.blockOnGoal;
@@ -135,12 +152,13 @@
             const canMove = (board, pos) => {
                 const cell = board[pos.row]?.[pos.col] || types.wall;
                 return cell === types.empty || cell === types.goal;
-            };
+            }; 
 
             const canPushBlock = (board, pos) => {
                 const cell = board[pos.row]?.[pos.col] || types.wall;
                 return cell === types.block || cell === types.blockOnGoal;
-            };
+            }; /* permite o movimento do jogador ou das caixas pelo tabuleiro */
+               /*cria uma cópia do tabuleiro para gerar imutabilidade e não ferir o paradigma funcional*/
 
             const moveEntity = (board, fromPos, toPos, isPlayer) => {
                 const newBoard = board.map(row => [...row]);
@@ -158,7 +176,9 @@
 
                 return newBoard;
             };
-
+            /*
+             * A principal função de lógica. Ela recebe o estado atual e a direção do jogador, calcula o próximo estado do jogo e o retorna.
+             */
             const update = (state, playerDir) => {
                 const nextPlayerPos = {
                     row: state.playerPos.row + playerDir.row,
@@ -167,11 +187,12 @@
                 
                 let newBoard = state.board;
                 let newPlayerPos = state.playerPos;
-
+                // Verifica se o espaço à frente está livre, para a passagem do jogador e das caixas. 
                 if (canMove(state.board, nextPlayerPos)) {
                     newBoard = moveEntity(newBoard, newPlayerPos, nextPlayerPos, true);
                     newPlayerPos = nextPlayerPos;
                 } else if (canPushBlock(state.board, nextPlayerPos)) {
+                    // Se houver uma caixa, verifica se o espaço à frente da caixa está livre.
                     const nextBlockPos = {
                         row: nextPlayerPos.row + playerDir.row,
                         col: nextPlayerPos.col + playerDir.col
@@ -183,10 +204,10 @@
                         newPlayerPos = nextPlayerPos;
                     }
                 }
-                
+                //retorna o novo estado do jogo 
                 return { ...state, board: newBoard, playerPos: newPlayerPos };
             };
-            
+            /* Verifica se o jogador venceu. :) */
             const checkWin = (state) => {
                 const totalGoals = state.goals.length;
                 let blocksOnGoals = 0;
@@ -196,13 +217,16 @@
                     if (cell === types.blockOnGoal ){
                         blocksOnGoals++;
                     }
-                });
+                }); // verifica e todas as caixas foram colocadas nos lugares correspondentes
 
                 return totalGoals > 0 && totalGoals === blocksOnGoals;
             };
-
+            
+            // Desenha o estado atual do jogo no canvas.
+             
             const draw = (state) => {
-                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.clearRect(0, 0, canvas.width, canvas.height); /* Se a tela não fosse limpa a cada movimento, o jogador deixaria um rastro, 
+                e os elementos do jogo seriam desenhados uns por cima dos outros, resultando em uma bagunça visual.*/
                 
                 state.board.forEach((row, rowIndex) => {
                     row.forEach((cell, colIndex) => {
@@ -232,7 +256,9 @@
                     document.getElementById("tela-vitoria").style.display = "flex";
                 }
             };
-            
+            /*Identifica a entrada do teclado e chama as funções de lógica e desenho
+              para atualizar o estado do jogo.
+             */
             const handleInput = (e) => {
                 const playerDir = { row: 0, col: 0 };
                 if (e.key === "ArrowUp") playerDir.row = -1;
@@ -245,7 +271,8 @@
                     draw(gameState);
                 }
             };
-
+            /* Inicia o jogo, e tira da tela o menu iniciar.
+             */
             const iniciarJogo = () => {
                 document.getElementById("tela-inicial").style.display = "none";
                 document.getElementById("tela-vitoria").style.display = "none";
@@ -254,11 +281,14 @@
             };
 
             const reiniciarJogo = () => iniciarJogo();
-
+            /* Reinicia o jogo ao chamar a função iniciarJogo(). */
             document.addEventListener("keydown", handleInput);
             window.iniciarJogo = iniciarJogo;
             window.reiniciarJogo = reiniciarJogo;
+            // Associa o comando do teclado para capturar a entrada.
+            /* Expõe as funções 'iniciarJogo' e 'reiniciarJogo' para que possam ser chamadas a partir dos botões no HTML. */
 
+            
             // Inicia o jogo na tela inicial, mas desenha o tabuleiro para que ele apareça atrás.
             draw(loadLevel(level1));
         });
